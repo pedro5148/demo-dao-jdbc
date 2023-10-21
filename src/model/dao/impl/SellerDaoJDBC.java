@@ -4,7 +4,10 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import db.DB;
 import db.DbException;
@@ -49,7 +52,7 @@ public class SellerDaoJDBC implements SellerDao{
 					+ "WHERE s.DepartmentId = d.Id "
 					+ "AND s.Id = ?"
 					);
-			st .setInt(1, id);
+			st.setInt(1, id);
 			rs = st.executeQuery();
 			if (rs.next()) {
 				 Department dep = instatiateDepartment(rs);
@@ -79,7 +82,7 @@ public class SellerDaoJDBC implements SellerDao{
 	}
 
 	private Department instatiateDepartment(ResultSet rs) throws SQLException {
-		 Department dep = instatiateDepartment(rs);
+		 Department dep = new Department();
 		 dep.setId(rs.getInt("DepartmentId"));
 		 dep.setName(rs.getString("Departamento"));
 		 return dep;
@@ -89,6 +92,45 @@ public class SellerDaoJDBC implements SellerDao{
 	public List<Seller> findAll() {
 		// TODO Auto-generated method stub
 		return null;
+	}
+
+	@Override
+	public List<Seller> findByDepartment(Department dep) {
+		PreparedStatement st = null;
+		ResultSet rs = null;
+		try {
+			st = conn.prepareStatement(
+					"SELECT s.*, d.Name as Departamento "
+					+ "FROM seller as s, department as d "
+					+ "WHERE s.DepartmentId = d.Id "
+					+ "AND d.Id = ? "
+					+ "ORDER BY s.Name"
+					);
+			st.setInt(1, dep.getId());
+			rs = st.executeQuery();
+			
+			List<Seller> lista = new ArrayList<>();
+			Map<Integer, Department> map = new HashMap<>();
+			
+			while (rs.next()) {
+				Department dep2 = map.get(rs.getInt("s.DepartmentId"));
+				
+				if (dep2 == null) {
+					dep2 = instatiateDepartment(rs);
+					map.put(rs.getInt("s.DepartmentId"), dep2);
+				}
+				Seller obj = instatiateSeller(rs, dep2);
+				lista.add(obj);
+			}
+			return lista;
+		}
+		catch (SQLException e) {
+			throw new DbException(e.getMessage());
+		}
+		finally {
+			DB.closeStatement(st);
+			DB.closeResultSet(rs);
+		}
 	}
 
 }
